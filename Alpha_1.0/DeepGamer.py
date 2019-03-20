@@ -92,6 +92,7 @@ stacked_frames  =  deque([np.zeros((84,84), dtype=np.int) for i in range(stack_s
 def stack_frames(stacked_frames, state, is_new_episode):
     # Preprocess frame
     frame = preprocess_frame(state)
+    frame = np.expand_dims(frame, axis=0)
     
     if is_new_episode:
         # Clear our stacked_frames
@@ -104,22 +105,23 @@ def stack_frames(stacked_frames, state, is_new_episode):
         stacked_frames.append(frame)
         
         # Stack the frames
-        stacked_state = np.stack(stacked_frames, axis=2)
+        stacked_state = np.stack(stacked_frames, axis=3)
         
     else:
         # Append frame to deque, automatically removes the oldest frame
         stacked_frames.append(frame)
 
         # Build the stacked state (first dimension specifies different frames)
-        stacked_state = np.stack(stacked_frames, axis=2) 
+        stacked_state = np.stack(stacked_frames, axis=3) 
     
+    stacked_state = stacked_state.reshape((84,84,4))
     return stacked_state, stacked_frames
 
 
 game, possible_actions = create_environment()
 
 ### MODEL HYPERPARAMETERS
-state_size = [84,84,4]      # Our input is a stack of 4 frames hence 84x84x4 (Width, height, channels) 
+state_size = (84,84,4)      # Our input is a stack of 4 frames hence 84x84x4 (Width, height, channels)
 action_size = game.get_available_buttons_size()              # 3 possible actions: left, right, shoot
 learning_rate =  0.0002      # Alpha (aka learning rate)
 
@@ -148,13 +150,13 @@ episode_render = False
 
 
 model = models.Sequential()
-model.add(layers.Conv2D(32, (3, 3), activation='elu', input_shape=state_size))
+model.add(layers.Conv2D(32, (8, 8), strides=(4,4), activation='elu', input_shape=state_size))
 # model.add(layers.MaxPooling2D((2, 2)))
 model.add(BatchNormalization())
-model.add(layers.Conv2D(64, (3, 3), activation='elu'))
+model.add(layers.Conv2D(64, (4,4), strides=(2,2), activation='elu', input_shape=state_size))
 # model.add(layers.MaxPooling2D((2, 2)))
 model.add(BatchNormalization())
-model.add(layers.Conv2D(64, (3, 3), activation='elu'))
+model.add(layers.Conv2D(128, (4, 4), strides=(2, 2), activation='elu', input_shape=state_size))
 # model.add(layers.MaxPooling2D((2, 2)))
 model.add(BatchNormalization())
 model.add(layers.Flatten())
@@ -236,7 +238,7 @@ def predict_action(explore_start, explore_stop, decay_rate, decay_step, state, a
     # Choose action a from state s using epsilon greedy.
     ## First we randomize a number
     exp_exp_tradeoff = np.random.rand()
-
+    state = state.reshape((1,84,84,4))
     # Here we'll use an improved version of our epsilon greedy strategy used in Q-learning notebook
     explore_probability = explore_stop + (explore_start - explore_stop) * np.exp(-decay_rate * decay_step)
     
@@ -252,5 +254,124 @@ def predict_action(explore_start, explore_stop, decay_rate, decay_step, state, a
         # Take the biggest Q value (= the best action)
         choice = np.argmax(Qs)
         action = possible_actions[int(choice)]
-                
     return action, explore_probability
+
+# Saver will help us to save our model
+
+if training == True:    
+    # Initialize the decay rate (that will use to reduce epsilon) 
+    decay_step = 0
+
+    # Init the game
+    game.init()
+
+    for episode in range(total_episodes):
+        # Set step to 0
+        step = 0
+        
+        # Initialize the rewards of the episode
+        episode_rewards = []
+        
+        # Make a new episode and observe the first state
+        game.new_episode()
+        state = game.get_state().screen_buffer
+        
+        # Remember that stack frame function also call our preprocess function.
+        state, stacked_frames = stack_frames(stacked_frames, state, True)
+        while step < max_steps:
+            step += 1
+            
+            # Increase decay_step
+            decay_step +=1
+            
+            # Predict the action to take and take it
+            action, explore_probability = predict_action(explore_start, explore_stop, decay_rate, decay_step, state, possible_actions)
+
+            # Do the action
+            reward = game.make_action(action)
+
+            # Look if the episode is finished
+            done = game.is_episode_finished()
+            
+            # Add the reward to total reward
+            episode_rewards.append(reward)
+
+            # If the game is finished
+            if done:
+                # the episode ends so no next state
+                next_state = np.zeros((84,84), dtype=np.int)
+                next_state, stacked_frames = stack_frames(stacked_frames, next_state, False)
+
+                # Set step = max_steps to end the episode
+                step = max_steps
+
+                # Get the total reward of the episode
+                total_reward = np.sum(episode_rewards)
+
+                # print('Episode: {}'.format(episode),
+                #             'Total reward: {}'.format(total_reward),
+                #             'Training loss: {:.4f}'.format(loss),
+                #             'Explore P: {:.4f}'.format(explore_probability))
+
+                memory.add((state, action, reward, next_state, done))
+
+            else:
+                # Get the next state
+                next_state = game.get_state().screen_buffer
+                
+                # Stack the frame of the next_state
+                next_state, stacked_frames = stack_frames(stacked_frames, next_state, False)
+                
+
+                # Add experience to memory
+                memory.add((state, action, reward, next_state, done))
+                
+                # st+1 is now our current state
+                state = next_state
+
+
+            ### LEARNING PART            
+            # Obtain random mini-batch from memory
+            batch = memory.sample(batch_size)
+            states_mb = np.array([each[0] for each in batch], ndmin=4)
+            actions_mb = np.array([each[1] for each in batch])
+            rewards_mb = np.array([each[2] for each in batch]) 
+            next_states_mb = np.array([each[3] for each in batch], ndmin=4)
+            dones_mb = np.array([each[4] for each in batch])
+
+            target_Qs_batch = []
+
+            # Get Q values for next_state
+            Qs_next_state = model.predict(next_states_mb)
+            
+            # Set Q_target = r if the episode ends at s+1, otherwise set Q_target = r + gamma*maxQ(s', a')
+            for i in range(0, len(batch)):
+                terminal = dones_mb[i]
+
+                # If we are in a terminal state, only equals reward
+                if terminal:
+                    target_Qs_batch.append(rewards_mb[i])
+                    
+                else:
+                    target = rewards_mb[i] + gamma * np.max(Qs_next_state[i])
+                    target_Qs_batch.append(target)
+                    
+
+            targets_mb = np.array([each for each in target_Qs_batch])
+
+            # loss, _ = sess.run([DQNetwork.loss, DQNetwork.optimizer],
+            #                     feed_dict={DQNetwork.inputs_: states_mb,
+            #                                 DQNetwork.target_Q: targets_mb,
+            #                                 DQNetwork.actions_: actions_mb})
+
+            # # Write TF Summaries
+            # summary = sess.run(write_op, feed_dict={DQNetwork.inputs_: states_mb,
+            #                                     DQNetwork.target_Q: targets_mb,
+            #                                     DQNetwork.actions_: actions_mb})
+            # writer.add_summary(summary, episode)
+            # writer.flush()
+
+        # Save model every 5 episodes
+        if episode % 5 == 0:
+            # model.save("./models/model.ckpt")
+            print("Model Saved")
