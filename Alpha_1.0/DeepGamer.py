@@ -1,6 +1,6 @@
-import tensorflow as tf      # Deep Learning library
 import numpy as np           # Handle matrices
 from vizdoom import *        # Doom Environment
+import tensorflow as tf
 
 import random                # Handling random number generation
 import time                  # Handling time calculation
@@ -13,10 +13,15 @@ from keras import layers
 from keras import models
 from keras.optimizers import RMSprop
 from keras.layers.normalization import BatchNormalization
-
+from keras.models import load_model
+from keras.callbacks import TensorBoard
 
 import warnings # This ignore all the warning messages that are normally printed during the training because of skiimage
 warnings.filterwarnings('ignore')
+
+import datetime
+
+now = datetime.datetime.now();
 
 def create_environment():
     game = DoomGame()
@@ -119,6 +124,7 @@ def stack_frames(stacked_frames, state, is_new_episode):
 
 
 game, possible_actions = create_environment()
+tensorboard = TensorBoard(log_dir="logs/{}".format(time()), histogram_freq=0,write_graph=True, write_images=False)
 
 ### MODEL HYPERPARAMETERS
 state_size = (84,84,4)      # Our input is a stack of 4 frames hence 84x84x4 (Width, height, channels)
@@ -359,9 +365,12 @@ if training == True:
 
             targets_mb = np.array([each for each in target_Qs_batch])
 
+            model.fit(x=states_mb, y=actions_mb, batch_size=64, epochs=1, verbose=2, callbacks=[tensorboard])
+
+            
             # loss, _ = sess.run([DQNetwork.loss, DQNetwork.optimizer],
             #                     feed_dict={DQNetwork.inputs_: states_mb,
-            #                                 DQNetwork.target_Q: targets_mb,
+            #                                 DQNetwork.target_Q:   ,
             #                                 DQNetwork.actions_: actions_mb})
 
             # # Write TF Summaries
@@ -373,5 +382,47 @@ if training == True:
 
         # Save model every 5 episodes
         if episode % 5 == 0:
-            # model.save("./models/model.ckpt")
+            model.save("./model.h5")
             print("Model Saved")
+else:
+    game, possible_actions = create_environment()
+    totalScore = 0
+    
+    # Load the model
+    model = load_model('./model.h5')
+    game.init()
+    n_episodes = 100
+    for i in range(n_episodes):
+        
+        done = False
+        
+        game.new_episode()
+        
+        state = game.get_state().screen_buffer
+        state, stacked_frames = stack_frames(stacked_frames, state, True)
+            
+        while not game.is_episode_finished():
+            # Take the biggest Q value (= the best action)
+            Qs = model.predict(state.reshape((1, *state.shape)))
+            
+            # Take the biggest Q value (= the best action)
+            choice = np.argmax(Qs)
+            action = possible_actions[int(choice)]
+            
+            game.make_action(action)
+            done = game.is_episode_finished()
+            score = game.get_total_reward()
+            totalScore += score
+            
+            if done:
+                break  
+                
+            else:
+                next_state = game.get_state().screen_buffer
+                next_state, stacked_frames = stack_frames(stacked_frames, next_state, False)
+                state = next_state
+
+        score = game.get_total_reward()
+        print("Score: ", score)
+    print ('Mean score ' + totalScore/n_episodes)
+    game.close()
