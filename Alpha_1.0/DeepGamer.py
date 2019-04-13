@@ -125,7 +125,7 @@ def stack_frames(stacked_frames, state, is_new_episode):
 
 game, possible_actions = create_environment()
 # Run tensorboard with 
-tensorboard = TensorBoard(log_dir="./log", histogram_freq=0,write_graph=True, write_images=False)
+tensorboard = TensorBoard(log_dir="./logs", histogram_freq=0,write_graph=True, write_images=False)
 
 ### MODEL HYPERPARAMETERS
 state_size = (84,84,4)      # Our input is a stack of 4 frames hence 84x84x4 (Width, height, channels)
