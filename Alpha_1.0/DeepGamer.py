@@ -124,7 +124,8 @@ def stack_frames(stacked_frames, state, is_new_episode):
 
 
 game, possible_actions = create_environment()
-tensorboard = TensorBoard(log_dir="logs/{}".format(time()), histogram_freq=0,write_graph=True, write_images=False)
+# Run tensorboard with 
+tensorboard = TensorBoard(log_dir="./log", histogram_freq=0,write_graph=True, write_images=False)
 
 ### MODEL HYPERPARAMETERS
 state_size = (84,84,4)      # Our input is a stack of 4 frames hence 84x84x4 (Width, height, channels)
@@ -168,9 +169,13 @@ model.add(BatchNormalization())
 model.add(layers.Flatten())
 model.add(layers.Dense(action_size, activation='linear'))
 
-model.compile(optimizer=RMSprop(lr=learning_rate, rho=0.9, epsilon=None, decay=decay_rate), 
+model.compile(optimizer=RMSprop(lr=learning_rate), 
     loss='mean_squared_error', 
     metrics=['acc'])
+
+# model.compile(optimizer=RMSprop(lr=learning_rate, rho=0.9, epsilon=None, decay=decay_rate), 
+# loss='mean_squared_error', 
+# metrics=['acc'])
 
 class Memory():
     def __init__(self, max_size):
@@ -314,10 +319,6 @@ if training == True:
                 # Get the total reward of the episode
                 total_reward = np.sum(episode_rewards)
 
-                # print('Episode: {}'.format(episode),
-                #             'Total reward: {}'.format(total_reward),
-                #             'Training loss: {:.4f}'.format(loss),
-                #             'Explore P: {:.4f}'.format(explore_probability))
 
                 memory.add((state, action, reward, next_state, done))
 
@@ -424,5 +425,6 @@ else:
 
         score = game.get_total_reward()
         print("Score: ", score)
-    print ('Mean score ' + totalScore/n_episodes)
+    print ("Mean Score")
+    print (totalScore/n_episodes)
     game.close()
