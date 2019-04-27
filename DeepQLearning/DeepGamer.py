@@ -124,7 +124,7 @@ state_size = (84,84,4)      # Our input is a stack of 4 frames hence 84x84x4 (Wi
 action_size = game.get_available_buttons_size()              # 3 possible actions: left, right, shoot
 
 ### TRAINING HYPERPARAMETERS
-total_episodes = 2500        # Total episodes for training
+total_episodes = 1000        # Total episodes for training
 max_steps = 100              # Max possible steps in an episode
 batch_size = 64             
 
@@ -138,9 +138,6 @@ episode_render = False
 if __name__ == "__main__":
     if training == True:
         agent = DQLAgent(state_size, action_size)
-        # Initialize the decay rate (that will use to reduce epsilon) 
-        decay_step = 0
-
         # Init the game
         game.init()
 
@@ -185,8 +182,9 @@ if __name__ == "__main__":
                     agent.remember(state, action, reward, next_state, done)
 
                     state = next_state
-            if len(agent.memory) > batch_size:
-                agent.replay(batch_size)
+                if len(agent.memory) > batch_size:
+                    agent.replay(batch_size)
+                    
             if (e % 10) == 0:
                 agent.save("./model.h5")
                 print("Model Saved")

@@ -16,14 +16,16 @@ class DQLAgent:
     def __init__(self, state_size, action_size):
         self.state_size = state_size
         self.action_size = action_size
-        self.memory = deque(maxlen=2000)
+        self.memory = deque(maxlen=100000)
         self.gamma = 0.95    # discount rate
         self.epsilon = 1.0  # exploration rate
+        self.decay_step = 0
+        self.epsilon_max = 1
         self.epsilon_min = 0.01
-        self.epsilon_decay = 0.995
+        self.epsilon_decay = 0.0001
         self.learning_rate = 0.0002
         self.model = self._build_model()
-        self.tensorboard = TensorBoard(log_dir="/tmp/tensorboard/logs", histogram_freq=0,write_graph=True, write_images=False)
+        self.tensorboard = TensorBoard(log_dir="/home/zolastro/Documents/DeepGamer/DeepQLearning/logs", histogram_freq=0,write_graph=True, write_images=False)
 
 
     def _build_model(self):
@@ -43,20 +45,24 @@ class DQLAgent:
 
         return model
 
-    def save(self, path):
-        self.model.save(path)
+    def load(self, name):
+        self.model.load_weights(name)
 
-    def load(self, path):
-        self.model = load_model('./model.h5')
+    def save(self, name):
+        self.model.save_weights(name)
 
 
     def remember(self, state, action, reward, next_state, done):
+        if (len(self.memory) == 100000):
+            print('Full memory!')
         self.memory.append((state, action, reward, next_state, done))
 
     def act(self, state):
         state = np.reshape(state, (1, 84, 84, 4))
-
-        if np.random.rand() <= self.epsilon:
+        
+        self.epsilon = self.epsilon_min + (self.epsilon_max - self.epsilon_min) * np.exp(-self.epsilon_decay * self.decay_step)
+        self.decay_step += 1
+        if self.epsilon > np.random.rand() :
             return random.randrange(self.action_size)
         else:
             act_values = self.model.predict(state)
@@ -64,6 +70,8 @@ class DQLAgent:
 
     def predict(self, state):
         act_values = self.model.predict(state)
+        print (act_values)
+        print(np.argmax(act_values[0]))
         return np.argmax(act_values[0])
 
     def replay(self, batch_size):
