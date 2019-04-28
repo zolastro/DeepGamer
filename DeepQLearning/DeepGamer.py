@@ -188,7 +188,6 @@ if __name__ == "__main__":
             if (e % 10) == 0:
                 agent.save("./model.h5")
                 print("Model Saved")
-
     else:
         game, possible_actions = create_environment()
         totalScore = 0
