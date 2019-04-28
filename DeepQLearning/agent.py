@@ -16,7 +16,7 @@ class DQLAgent:
     def __init__(self, state_size, action_size):
         self.state_size = state_size
         self.action_size = action_size
-        self.memory = deque(maxlen=100000)
+        self.memory = deque(maxlen=1000000)
         self.gamma = 0.95    # discount rate
         self.epsilon = 1.0  # exploration rate
         self.decay_step = 0
@@ -37,12 +37,13 @@ class DQLAgent:
         model.add(layers.Conv2D(128, (4, 4), strides=(2, 2), activation='elu'))
         model.add(BatchNormalization())
         model.add(layers.Flatten())
+        model.add(layers.Dense(512, activation='linear'))
         model.add(layers.Dense(self.action_size, activation='linear'))
 
         model.compile(optimizer=RMSprop(lr=self.learning_rate), 
             loss='mse', 
             metrics=['acc'])
-
+        model.summary()
         return model
 
     def load(self, name):
@@ -53,8 +54,6 @@ class DQLAgent:
 
 
     def remember(self, state, action, reward, next_state, done):
-        if (len(self.memory) == 100000):
-            print('Full memory!')
         self.memory.append((state, action, reward, next_state, done))
 
     def act(self, state):
