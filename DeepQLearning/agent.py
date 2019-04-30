@@ -37,7 +37,7 @@ class DQLAgent:
         model.add(layers.Conv2D(128, (4, 4), strides=(2, 2), activation='elu'))
         model.add(BatchNormalization())
         model.add(layers.Flatten())
-        model.add(layers.Dense(512, activation='linear'))
+        model.add(layers.Dense(64, activation='relu'))
         model.add(layers.Dense(self.action_size, activation='linear'))
 
         model.compile(optimizer=RMSprop(lr=self.learning_rate), 
@@ -69,8 +69,6 @@ class DQLAgent:
 
     def predict(self, state):
         act_values = self.model.predict(state)
-        print (act_values)
-        print(np.argmax(act_values[0]))
         return np.argmax(act_values[0])
 
     def replay(self, batch_size):
@@ -79,16 +77,17 @@ class DQLAgent:
         for state, action, reward, next_state, done in minibatch:
             state = np.reshape(state, (1, 84, 84, 4))
             next_state = np.reshape(next_state,  (1, 84, 84, 4))
+            action = np.argmax(action)
             target = reward
             if not done:
                 target = (reward + self.gamma *
                           np.amax(self.model.predict(next_state)[0]))
             target_f = self.model.predict(state)
-            target_f[0][action] = target 
+            target_f[0][action] = target
             # Filtering out states and targets for training
             states.append(state[0])
             targets_f.append(target_f[0])
-        self.model.fit(np.array(states), np.array(targets_f), epochs=1, verbose=0, callbacks=[self.tensorboard])
+        self.model.fit(np.array(states), np.array(targets_f), epochs=1, batch_size=batch_size, verbose=0, callbacks=[self.tensorboard])
 
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay

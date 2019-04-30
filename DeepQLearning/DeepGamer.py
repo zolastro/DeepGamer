@@ -138,6 +138,8 @@ episode_render = False
 if __name__ == "__main__":
     if training == True:
         agent = DQLAgent(state_size, action_size)
+        # agent.load('./model.h5')
+
         # Init the game
         game.init()
 
@@ -181,7 +183,7 @@ if __name__ == "__main__":
                     next_state, stacked_frames = stack_frames(stacked_frames, next_state, False)
                     agent.remember(state, action, reward, next_state, done)
 
-                    state = next_state
+                state = next_state
                 if len(agent.memory) > batch_size:
                     agent.replay(batch_size)
                     
