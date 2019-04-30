@@ -98,7 +98,7 @@ action_size = game.get_available_buttons_size()              # 3 possible action
 ### TRAINING HYPERPARAMETERS
 total_episodes = 1000        # Total episodes for training
 max_steps = 100              # Max possible steps in an episode
-batch_size = 64             
+batch_size = 16             
 
 ### MODIFY THIS TO FALSE IF YOU JUST WANT TO SEE THE TRAINED AGENT
 training = True
