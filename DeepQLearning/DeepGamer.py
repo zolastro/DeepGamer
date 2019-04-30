@@ -38,34 +38,6 @@ def create_environment():
     
     return game, possible_actions
        
-"""
-Here we performing random action to test the environment
-"""
-def test_environment():
-    game = DoomGame()
-    game.load_config("basic.cfg")
-    game.set_doom_scenario_path("basic.wad")
-    game.init()
-    shoot = [0, 0, 1]
-    left = [1, 0, 0]
-    right = [0, 1, 0]
-    actions = [shoot, left, right]
-
-    episodes = 10
-    for i in range(episodes):
-        game.new_episode()
-        while not game.is_episode_finished():
-            state = game.get_state()
-            img = state.screen_buffer
-            misc = state.game_variables
-            action = random.choice(actions)
-            print(action)
-            reward = game.make_action(action)
-            print ("\treward:", reward)
-            time.sleep(0.02)
-        print ("Result:", game.get_total_reward())
-        time.sleep(2)
-    game.close()
 
 
 def preprocess_frame(frame):
@@ -138,7 +110,6 @@ episode_render = False
 if __name__ == "__main__":
     if training == True:
         agent = DQLAgent(state_size, action_size)
-        # agent.load('./model.h5')
 
         # Init the game
         game.init()
@@ -165,14 +136,11 @@ if __name__ == "__main__":
 
                 # Look if the episode is finished
                 done = game.is_episode_finished()
-
                 
                 if done:
                     # the episode ends so no next state
                     next_state = np.zeros((84,84), dtype=np.int)
                     next_state, stacked_frames = stack_frames(stacked_frames, next_state, False)
-                    agent.remember(state, action, reward, next_state, done)
-                    
                     # exit episode loop
                     step = max_steps
 
@@ -182,13 +150,14 @@ if __name__ == "__main__":
                     next_state = game.get_state().screen_buffer
                     next_state, stacked_frames = stack_frames(stacked_frames, next_state, False)
                     agent.remember(state, action, reward, next_state, done)
-
+                    
                 state = next_state
                 if len(agent.memory) > batch_size:
                     agent.replay(batch_size)
                     
             if (e % 10) == 0:
                 agent.save("./model.h5")
+                agent.summary()
                 print("Model Saved")
     else:
         game, possible_actions = create_environment()
@@ -196,7 +165,7 @@ if __name__ == "__main__":
 
         # Load the model
         agent = DQLAgent(state_size, action_size)
-        agent.load('./model.h5')
+        # agent.load('./model.h5')
         game.init()
         n_episodes = 100
         for i in range(n_episodes):
