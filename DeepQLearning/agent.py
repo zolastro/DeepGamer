@@ -61,7 +61,8 @@ class DQLAgent:
 
     def remember(self, state, action, reward, next_state, done):
         self.memory.append((state, action, reward, next_state, done))
-        if (len(self.memory) % 1000):
+        if ((len(self.memory) % 1000) == 0):
+            print('Dumping memory...')
             memory_file = open('memory.obj', 'wb') 
             pickle.dump(self.memory, memory_file)
             memory_file.close()
@@ -77,6 +78,8 @@ class DQLAgent:
 
     def summary(self):
         print('Epsilon:')
+        print(self.epsilon)
+        print('Gamma:')
         print(self.epsilon)
         print('Memory:')
         print(len(self.memory))
@@ -109,6 +112,8 @@ class DQLAgent:
             else:
                 prediction = self.model.predict(next_state)[0]
                 target = reward + self.gamma * np.amax(prediction)
+                if self.gamma < 0.99:
+                    self.gamma = 1 - 0.99 * (1 - self.gamma)
             target_f = self.model.predict(state)
             target_f[0][action] = target
             # Filtering out states and targets for training
