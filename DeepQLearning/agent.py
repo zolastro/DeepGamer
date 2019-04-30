@@ -108,10 +108,9 @@ class DQLAgent:
                 target = reward 
             else:
                 prediction = self.model.predict(next_state)[0]
+                target = reward + self.gamma * np.amax(prediction)
             target_f = self.model.predict(state)
             target_f[0][action] = target
-            print(target_f[0])
-            print('------------')
             # Filtering out states and targets for training
             states.append(state[0])
             targets_f.append(target_f[0])
