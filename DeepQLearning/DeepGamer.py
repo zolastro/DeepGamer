@@ -98,8 +98,8 @@ action_size = game.get_available_buttons_size()              # 3 possible action
 ### TRAINING HYPERPARAMETERS
 total_episodes = 1000        # Total episodes for training
 max_steps = 100              # Max possible steps in an episode
-batch_size = 16             
-
+batch_size = 64             
+min_replay_size = 5000
 ### MODIFY THIS TO FALSE IF YOU JUST WANT TO SEE THE TRAINED AGENT
 training = True
 
@@ -113,12 +113,15 @@ if __name__ == "__main__":
 
         # Init the game
         game.init()
-
-        for e in range(total_episodes):
+        e = 0
+        while True:
             # reset state in the beginning of each game
             # Set step to 0
             step = 0
             
+            # Increase episode
+            e += 1
+
             # Initialize the rewards of the episode
             episode_rewards = []
             
@@ -141,64 +144,71 @@ if __name__ == "__main__":
                     # the episode ends so no next state
                     next_state = np.zeros((84,84), dtype=np.int)
                     next_state, stacked_frames = stack_frames(stacked_frames, next_state, False)
+                    reward = 100
+                    agent.remember(state, action, reward, next_state, done)
                     # exit episode loop
                     step = max_steps
-
-                    print("episode: {}/{}, score: {}"
-                        .format(e, total_episodes, np.sum(episode_rewards)))
                 else:
                     next_state = game.get_state().screen_buffer
                     next_state, stacked_frames = stack_frames(stacked_frames, next_state, False)
                     agent.remember(state, action, reward, next_state, done)
                     
                 state = next_state
-                if len(agent.memory) > batch_size:
+                if (len(agent.memory) > min_replay_size):
                     agent.replay(batch_size)
-                    
+                
+                if (step == max_steps):
+                    print("episode: {}, score: {}"
+                        .format(e, np.sum(episode_rewards)))
+
+
             if (e % 10) == 0:
                 agent.save("./model.h5")
                 agent.summary()
                 print("Model Saved")
     else:
-        game, possible_actions = create_environment()
-        totalScore = 0
-
-        # Load the model
         agent = DQLAgent(state_size, action_size)
-        # agent.load('./model.h5')
+        agent.load('./model.h5')
+        # Init the game
         game.init()
-        n_episodes = 100
-        for i in range(n_episodes):
+
+        for e in range(total_episodes):
+            # reset state in the beginning of each game
+            # Set step to 0
+            step = 0
             
-            done = False
+            # Initialize the rewards of the episode
+            episode_rewards = []
             
+            # Make a new episode and observe the first state
+            # Remember that stack frame function also call our preprocess function.
             game.new_episode()
-            
             state = game.get_state().screen_buffer
             state, stacked_frames = stack_frames(stacked_frames, state, True)
-                
-            while not game.is_episode_finished():
-                # Take the biggest Q value (= the best action)
-                choice = agent.predict(state.reshape((1, *state.shape)))
-                
-                # Take the biggest Q value (= the best action)
-                action = possible_actions[int(choice)]
-                
-                game.make_action(action)
+            while step < max_steps:
+                step += 1
+                action = possible_actions[agent.act(state, False)]
+                print(action)
+                # Do the action
+                reward = game.make_action(action)
+                print(reward)
+                episode_rewards.append(reward)
+
+                # Look if the episode is finished
                 done = game.is_episode_finished()
-                score = game.get_total_reward()
-                totalScore += score
                 
                 if done:
-                    break  
-                    
+                    # the episode ends so no next state
+                    next_state = np.zeros((84,84), dtype=np.int)
+                    next_state, stacked_frames = stack_frames(stacked_frames, next_state, False)
+                    # exit episode loop
+                    step = max_steps
                 else:
                     next_state = game.get_state().screen_buffer
                     next_state, stacked_frames = stack_frames(stacked_frames, next_state, False)
-                    state = next_state
+                    
+                state = next_state
 
-            score = game.get_total_reward()
-            print("Score: ", score)
-        print ("Mean Score")
-        print (totalScore/n_episodes)
-        game.close()
+                if (step == max_steps):
+                    print("episode: {}/{}, score: {}"
+                        .format(e, total_episodes, np.sum(episode_rewards)))
