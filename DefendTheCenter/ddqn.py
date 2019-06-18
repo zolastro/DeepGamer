@@ -1,4 +1,5 @@
 import random
+import gym
 import numpy as np
 from collections import deque
 from keras import layers
@@ -72,6 +73,7 @@ class DQNAgent:
             return random.randrange(self.action_size)
         state = np.reshape(state, (1, 42, 42, stack_size))
         act_values = self.model.predict(state)
+
         return np.argmax(act_values[0])  # returns action
 
     def replay(self, batch_size):
@@ -107,10 +109,10 @@ def create_environment():
     game = DoomGame()
     
     # Load the correct configuration
-    game.load_config("basic.cfg")
+    game.load_config("defend_the_center.cfg")
     
     # Load the correct scenario (in our case basic scenario)
-    game.set_doom_scenario_path("basic.wad")
+    game.set_doom_scenario_path("defend_the_center.wad")
     
     game.init()
     
@@ -140,7 +142,8 @@ def preprocess_frame(frame):
     normalized_frame = cropped_frame/255.0
     # Resize
     preprocessed_frame = transform.resize(normalized_frame, [42,42])
-    
+    # plt.imshow(transform.resize(normalized_frame, [42,42]))
+    # plt.show()
     
     return preprocessed_frame
 
@@ -184,7 +187,7 @@ action_size = game.get_available_buttons_size()              # 3 possible action
 
 ### TRAINING HYPERPARAMETERS
 EPISODES = 5000        # Total episodes for training
-max_steps = 100              # Max possible steps in an episode
+max_steps = 1000       # Max possible steps in an episode
 batch_size = 32             
 min_replay_size = 5000
 ### MODIFY THIS TO FALSE IF YOU JUST WANT TO SEE THE TRAINED AGENT
@@ -202,24 +205,23 @@ if __name__ == "__main__":
     all_scores = []
     while True:
         if len(agent.memory) >= min_replay_size:
-            e += 1
-        # Make a new episode and observe the first state
+            e += 1        # Make a new episode and observe the first state
         # Remember that stack frame function also call our preprocess function.
         game.new_episode()
         episode_rewards = []
 
         state = game.get_state().screen_buffer
         state, stacked_frames = stack_frames(stacked_frames, state, True)
-        for time in range(100):
+        for time in range(max_steps):
             # env.render()
             action = agent.act(state)
             reward = game.make_action(possible_actions[action])
             done = game.is_episode_finished()
 
-            reward = reward if not done else -10
+            reward = reward if not done else 1
             episode_rewards.append(reward)
 
-            if done or time == 99:
+            if done or time == max_steps:
                 agent.update_target_model()
                 print("episode: {}, score: {}, e: {:.2}"
                     .format(e, np.sum(episode_rewards), agent.epsilon))
@@ -240,10 +242,10 @@ if __name__ == "__main__":
             print('Agent saved')
             print('Memory: {}'.format(len(agent.memory)))
             agent.save("./save/ddqn.h5")
-        if e % 1000 == 0:
+        if e % 250 == 0:
             print("Mean score: " + str(np.mean(all_scores[(e-100):e])))
             plt.plot(range(e-100, e), all_scores[(e-100):e])
-            plt.ylim( -150, 100 )
+            plt.ylim( -10, 50 )
             plt.xlabel('Episodes')
             plt.ylabel('Score')
             plt.show()
