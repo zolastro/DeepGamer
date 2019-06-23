@@ -1,55 +1,11 @@
 import random
 import numpy as np
 
-from dqn import DQN
 from collections import deque
+
+from dqn import DQN
 from environment import Environment
-from skimage import transform# Help us to preprocess the frames
-
-
-from PIL import Image, ImageEnhance 
-
-
-### FRAME PREPROCESSING FUNCTIONS
-def preprocess_frame(frame):
-    # Greyscale frame already done in our vizdoom config
-    # Increase contrast
-    frame = increase_contrast(frame, 4)
-    # Remove the roof because it contains no information)
-    cropped_frame = frame[30:-40,30:-30]
-
-    # Normalize pixel values to be between 0.0 and 1.0
-    normalized_frame = cropped_frame/255.0
-    
-    # Resize the preprocessed frame down to 42x42 
-    preprocessed_frame = transform.resize(normalized_frame, [42,42])
-    
-    return preprocessed_frame
-
-def increase_contrast(img, factor):
-    factor = float(factor)
-    return np.clip(128 + factor * img - factor * 128, 0, 255).astype(np.uint8)
-
-### FRAME STACKING FUNCTION
-def stack_frames(stacked_frames, state, is_new_episode):
-    # Preprocess frame
-    frame = preprocess_frame(state)
-    frame = np.expand_dims(frame, axis=0)
-
-    if is_new_episode:
-        # Clear our previously stacked frames
-        stacked_frames = deque([np.zeros((42,42), dtype=np.int) for i in range(stack_size)], maxlen=stack_size)
-        # Initialize the frames deque by copying the same frame "stack_size" times
-        for _ in range(stack_size):
-            stacked_frames.append(frame)
-    else:
-        # Append the frames to the deque
-        stacked_frames.append(frame)
-    
-    # Create an stack out of the deque
-    stacked_state = np.stack(stacked_frames, axis=3) 
-    stacked_state = stacked_state.reshape((42,42,stack_size))
-    return stacked_state, stacked_frames
+from preprocessor import Preprocessor
 
 ### ENVIRONMENT HYPERPARAMETERS
 left = [1, 0, 0]
@@ -60,8 +16,8 @@ game = Environment("defend_the_center/defend_the_center.cfg", "defend_the_center
 
 ### EXPERIENCES HYPERPARAMETERS
 stack_size = 2                                      # We stack 2 frames per experience
-# Creates a first stack of frames initialized to zeros
 stacked_frames = deque([np.zeros((42,42), dtype=np.int) for i in range(stack_size)], maxlen=stack_size) 
+preprocessor = Preprocessor(stack_size)
 
 ### MODEL HYPERPARAMETERS
 state_size = (42,42,stack_size)                     # Our input is a stack of 4 frames hence 42x42x2 (Width, height, channels)
@@ -85,7 +41,7 @@ if __name__ == "__main__":
 
         # Get the current environment state and add it to the previously stacked frames
         state = game.get_state()
-        state, stacked_frames = stack_frames(stacked_frames, state, True)
+        state, stacked_frames = preprocessor.stack_frames(stacked_frames, state, True)
         for time in range(max_steps):
             # Get next action from the DQN
             action = agent.act(state)
@@ -105,7 +61,7 @@ if __name__ == "__main__":
             else:
                 # Get the next environment state and stack it to the previously stacked frames
                 next_state = game.get_state()
-                next_state, stacked_frames = stack_frames(stacked_frames, next_state, False)
+                next_state, stacked_frames = preprocessor.stack_frames(stacked_frames, next_state, False)
             
             # Add that experience to the replay buffer
             agent.remember((state, action, reward, next_state, done))
