@@ -1,11 +1,11 @@
 from vizdoom import *
 
 class Environment:
-    def __init__(self, config_path, scneario_path):
+    def __init__(self, config_path, scenario_path):
         self.game = DoomGame()
         
-        self.game.load_config("defend_the_center.cfg")
-        self.game.set_doom_scenario_path("defend_the_center.wad")
+        self.game.load_config(config_path)
+        self.game.set_doom_scenario_path(scenario_path)
         
         self.game.init()
 

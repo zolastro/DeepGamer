@@ -108,8 +108,6 @@ if __name__ == "__main__":
         for time in range(max_steps):
             # env.render()
             action = agent.act(state)
-            print(action)
-            print(possible_actions[action])
             reward = game.make_action(possible_actions[action])
             done = game.is_episode_finished()
 
@@ -135,5 +133,5 @@ if __name__ == "__main__":
                 agent.replay(batch_size)
         if e % 10 == 0:
             print('Agent saved')
-            print('Memory: {}'.format(len(agent.memory)))
+            print('Memory: {}'.format(agent.memory.get_length()))
             agent.save("./save/ddqn.h5")

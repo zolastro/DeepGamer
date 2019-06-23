@@ -62,7 +62,7 @@ class DQN:
     def act(self, state):
         if np.random.rand() <= self.epsilon:
             return random.randrange(self.action_size)
-        state = np.reshape(state, (1, 42, 42, self.state_size.shape[2]))
+        state = np.reshape(state, (1, 42, 42, self.state_size[2]))
         act_values = self.model.predict(state)
 
         return np.argmax(act_values[0])  # returns action
@@ -72,8 +72,8 @@ class DQN:
         states, targets_f = [], []
 
         for state, action, reward, next_state, done in minibatch:
-            state = np.reshape(state, (1, 42, 42, self.state_size.shape[2]))
-            next_state = np.reshape(next_state, (1, 42, 42, self.state_size.shape[2]))
+            state = np.reshape(state, (1, 42, 42, self.state_size[2]))
+            next_state = np.reshape(next_state, (1, 42, 42, self.state_size[2]))
             target = self.model.predict(state)
             if done:
                 target[0][action] = reward
