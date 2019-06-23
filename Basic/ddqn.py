@@ -12,7 +12,7 @@ from PIL import Image, ImageEnhance
 
 
 def create_environment():
-    game = Environment("defend_the_center.cfg", "defend_the_center.wad")
+    game = Environment("basic.cfg", "basic.wad")
 
     
     # Here our possible actions
