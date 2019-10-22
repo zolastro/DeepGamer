@@ -1,5 +1,5 @@
-**/kaggle_original_data/
-
+**/save
 .ipynb_checkpoints/*
 /Basic/.vscode/settings.json
 **/.vscode/
+**/__pycache__/
