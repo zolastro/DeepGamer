@@ -4,7 +4,7 @@ This  project  presents  a  deep  learning  model  able  to  learn  how  toperfo
 ## Clone the repo
 You can clone this repo via https using the following command:
 
-`git clone --recursive https://github.com/melchor629/retro`
+`https://github.com/zolastro/DeepGamer.git`
 
 ## Run this project
 ### Get dependencies
