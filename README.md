@@ -25,4 +25,17 @@ python basic.py
 or
 ```
 python defend_the_center.py
-``
+```
+## Results
+This graph shows the results of the agent in both scenarios.
+### Basic
+<p>
+  <img src="https://github.com/zolastro/DeepGamer/blob/master/results/basic.png" width="45%" />
+  <img src="https://github.com/zolastro/DeepGamer/blob/master/results/basic-results.png" width="50%" /> 
+</p>
+
+### Defend the center
+<p>
+  <img src="https://github.com/zolastro/DeepGamer/blob/master/results/defend-the-center.png" width="45%" />
+  <img src="https://github.com/zolastro/DeepGamer/blob/master/results/defend-the-center-results.png" width="50%" /> 
+</p>
